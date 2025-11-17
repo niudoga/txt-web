@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>文本存储</title>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: Arial; max-width: 600px; margin: 0 auto; padding: 20px; }
+        .container { background: #f5f5f5; padding: 20px; border-radius: 10px; }
+        textarea { width: 100%; height: 200px; margin: 10px 0; padding: 10px; border: 1px solid #ddd; border-radius: 5px; }
+        button { background: #007acc; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #005a9e; }
+        .status { margin: 10px 0; padding: 10px; background: #e9e9e9; border-radius: 5px; }
+        .progress-bar { background: #ddd; height: 20px; border-radius: 10px; margin: 5px 0; }
+        .progress { background: #4CAF50; height: 100%; border-radius: 10px; text-align: center; color: white; }
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); }
+        .modal-content { background: white; margin: 15% auto; padding: 20px; width: 300px; border-radius: 10px; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📝 文本存储</h1>
+        
+        <div class="status">
+            <div>存储使用率: <span id="usage-percent">0</span>%</div>
+            <div class="progress-bar">
+                <div id="progress-bar" class="progress" style="width: 0%">0%</div>
+            </div>
+            <div>已存储: <span id="stored-count">0</span> 个文本</div>
+        </div>
+
+        <textarea id="content" placeholder="粘贴你的文本内容到这里..."></textarea>
+        
+        <div>
+            <button onclick="storeText()">存储文本</button>
+        </div>
+    </div>
+
+    <!-- 成功弹窗 -->
+    <div id="success-modal" class="modal">
+        <div class="modal-content">
+            <h3>✅ 存储成功!</h3>
+            <p>你的文本已保存</p>
+            <div style="margin: 15px 0;">
+                <strong>访问链接:</strong><br>
+                <input type="text" id="result-url" style="width: 100%; padding: 5px; margin: 5px 0;" readonly>
+            </div>
+            <div style="margin: 15px 0;">
+                <strong>Twitter分享:</strong><br>
+                <input type="text" id="result-shorturl" style="width: 100%; padding: 5px; margin: 5px 0;" readonly>
+            </div>
+            <button onclick="copyUrl()" style="background: #28a745;">复制链接</button>
+            <button onclick="closeModal()" style="background: #6c757d;">关闭</button>
+        </div>
+    </div>
+
+    <script>
+        // 配置 - 修改为你的Worker地址
+        const BASE_API = 'https://your-worker.your-account.workers.dev';
+        
+        // 初始化加载状态
+        loadStatus();
+
+        // 加载存储状态
+        async function loadStatus() {
+            try {
+                const response = await fetch(`${BASE_API}/api/status`);
+                const data = await response.json();
+                
+                document.getElementById('usage-percent').textContent = data.usage_percent;
+                document.getElementById('progress-bar').style.width = data.usage_percent + '%';
+                document.getElementById('progress-bar').textContent = data.usage_percent + '%';
+                document.getElementById('stored-count').textContent = data.stored_count;
+                
+                // 根据使用率改变颜色
+                const progressBar = document.getElementById('progress-bar');
+                if (data.usage_percent > 80) {
+                    progressBar.style.background = '#f44336';
+                } else if (data.usage_percent > 50) {
+                    progressBar.style.background = '#ff9800';
+                } else {
+                    progressBar.style.background = '#4CAF50';
+                }
+            } catch (error) {
+                console.error('获取状态失败:', error);
+            }
+        }
+
+        // 存储文本
+        async function storeText() {
+            const content = document.getElementById('content').value.trim();
+            if (!content) {
+                alert('请输入文本内容');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${BASE_API}/api/store`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ content })
+                });
+
+                const result = await response.json();
+                
+                if (result.success) {
+                    // 显示成功弹窗
+                    document.getElementById('result-url').value = result.url;
+                    document.getElementById('result-shorturl').value = result.shortUrl;
+                    document.getElementById('success-modal').style.display = 'block';
+                    
+                    // 刷新状态
+                    loadStatus();
+                } else {
+                    alert('存储失败: ' + result.error);
+                }
+            } catch (error) {
+                alert('网络错误: ' + error.message);
+            }
+        }
+
+        // 复制链接
+        function copyUrl() {
+            const urlInput = document.getElementById('result-url');
+            urlInput.select();
+            document.execCommand('copy');
+            alert('链接已复制到剪贴板!');
+        }
+
+        // 关闭弹窗
+        function closeModal() {
+            document.getElementById('success-modal').style.display = 'none';
+            document.getElementById('content').value = ''; // 清空输入框
+        }
+    </script>
+</body>
+              </html>
